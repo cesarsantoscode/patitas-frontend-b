@@ -1,16 +1,23 @@
 package pe.edu.cibertec.patitas_frontend_b.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestTemplate;
+import pe.edu.cibertec.patitas_frontend_b.dto.LoginRequestDTO;
+import pe.edu.cibertec.patitas_frontend_b.dto.LoginResponseDTO;
 import pe.edu.cibertec.patitas_frontend_b.viewmodel.LoginModel;
 
 @Controller
 @RequestMapping("/login")
 public class LoginController {
+
+    @Autowired
+    RestTemplate restTemplate;
 
     @GetMapping("/inicio")
     public String inicio(Model model) {
@@ -35,10 +42,36 @@ public class LoginController {
             return "inicio";
         }
 
-        // Invocar API de validación de usuario
-        LoginModel loginModel = new LoginModel("00", "", "Bruno Diaz");
-        model.addAttribute("loginModel", loginModel);
-        return "principal";
+        try {
+
+            // Invocar API de validación de usuario
+            String endpoint = "http://localhost:8081/autenticacion/login";
+            LoginRequestDTO loginRequestDTO = new LoginRequestDTO(tipoDocumento, numeroDocumento, password);
+            LoginResponseDTO loginResponseDTO = restTemplate.postForObject(endpoint, loginRequestDTO, LoginResponseDTO.class);
+
+            // Validar respuesta
+            if (loginResponseDTO.codigo().equals("00")) {
+
+                LoginModel loginModel = new LoginModel("00", "", loginResponseDTO.nombreUsuario());
+                model.addAttribute("loginModel", loginModel);
+                return "principal";
+
+            } else {
+
+                LoginModel loginModel = new LoginModel("02", "Error: Autenticación fallida", "");
+                model.addAttribute("loginModel", loginModel);
+                return "inicio";
+
+            }
+
+        } catch(Exception e) {
+
+            LoginModel loginModel = new LoginModel("99", "Error: Ocurrió un problema en la autenticación", "");
+            model.addAttribute("loginModel", loginModel);
+            System.out.println(e.getMessage());
+            return "inicio";
+
+        }
 
     }
 
